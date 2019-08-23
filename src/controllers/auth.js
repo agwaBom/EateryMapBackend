@@ -7,34 +7,48 @@ import { facebook, google } from '../config';
 
 // Transform Facebook profile because Facebook and Google profile objects look different
 // and we want to transform them into user objects that have the same set of attributes
-const transformFacebookProfile = (profile) => ({
+const transformFacebookProfile = profile => ({
   oauth_id: profile.id,
   name: profile.name,
   avatar: profile.picture.data.url,
 });
 
 // Transform Google profile into user object
-const transformGoogleProfile = (profile) => ({
-  oauth_id: profile.id,
-  name: profile.displayName,
-  avatar: profile.image.url,
-});
+const transformGoogleProfile = profile => {
+  return {
+    oauth_id: profile.sub,
+    name: profile.name,
+    avatar: profile.picture,
+  };
+};
 
 // Register Facebook Passport strategy
-passport.use(new FacebookStrategy(facebook,
-  // Gets called when user authorizes access to their profile
-  async (accessToken, refreshToken, profile, done) =>
-     done(null, await createOrGetUserFromDatabase(transformFacebookProfile(profile._json)))
-));
+passport.use(
+  new FacebookStrategy(
+    facebook,
+    // Gets called when user authorizes access to their profile
+    async (accessToken, refreshToken, profile, done) =>
+      done(
+        null,
+        await createOrGetUserFromDatabase(
+          transformFacebookProfile(profile._json),
+        ),
+      ),
+  ),
+);
 
 // Register Google Passport strategy
-passport.use(new GoogleStrategy(google,
-  async (accessToken, refreshToken, profile, done) =>
-     done(null, await createOrGetUserFromDatabase(transformGoogleProfile(profile._json)))
-));
+passport.use(
+  new GoogleStrategy(google, async (accessToken, refreshToken, profile, done) =>
+    done(
+      null,
+      await createOrGetUserFromDatabase(transformGoogleProfile(profile._json)),
+    ),
+  ),
+);
 
-const createOrGetUserFromDatabase = async (userProfile) => {
-  let user = await User.findOne({ 'oauth_id': userProfile.oauth_id }).exec();
+const createOrGetUserFromDatabase = async userProfile => {
+  let user = await User.findOne({ oauth_id: userProfile.oauth_id }).exec();
   if (!user) {
     user = new User({
       oauth_id: userProfile.oauth_id,
@@ -54,11 +68,17 @@ passport.deserializeUser((user, done) => done(null, user));
 
 // Facebook
 export const facebookLogin = passport.authenticate('facebook');
-export const facebookMiddleware = passport.authenticate('facebook', { failureRedirect: '/auth/facebook' });
+export const facebookMiddleware = passport.authenticate('facebook', {
+  failureRedirect: '/auth/facebook',
+});
 
 // Google
-export const googleLogin = passport.authenticate('google', { scope: ['profile'] });
-export const googleMiddleware = passport.authenticate('google', { failureRedirect: '/auth/google' });
+export const googleLogin = passport.authenticate('google', {
+  scope: ['profile'],
+});
+export const googleMiddleware = passport.authenticate('google', {
+  failureRedirect: '/auth/google',
+});
 
 // Callback
 export const oauthCallback = async (req, res) => {
